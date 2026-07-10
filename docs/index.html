@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Observatorio de Tráfico de Marbella · DGT</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --plane:#f9f9f7; --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#898781;
+    --grid:#e1e0d9; --axis:#c3c2b7; --ring:rgba(11,11,11,.10);
+    --s1:#2a78d6; --s2:#1baf7a; --s3:#eda100; --s4:#008300; --s5:#4a3aa7; --s6:#e34948;
+    --accent:#1F4E79;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --plane:#0d0d0d; --surface:#1a1a19; --ink:#fff; --ink2:#c3c2b7; --muted:#898781;
+      --grid:#2c2c2a; --axis:#383835; --ring:rgba(255,255,255,.10);
+      --s1:#3987e5; --s2:#199e70; --s3:#c98500; --s4:#008300; --s5:#9085e9; --s6:#e66767;
+      --accent:#8fb7e0;
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--plane);color:var(--ink);
+    font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.45}
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 20px 64px}
+  header h1{font-size:1.7rem;margin:0 0 4px}
+  header p{margin:0;color:var(--ink2);font-size:.92rem}
+  .src{color:var(--muted);font-size:.8rem;margin-top:6px}
+  .src a{color:var(--accent)}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px;margin:26px 0}
+  .kpi{background:var(--surface);border:1px solid var(--ring);border-radius:12px;padding:14px 16px}
+  .kpi .lbl{font-size:.74rem;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+  .kpi .val{font-size:1.55rem;font-weight:700;margin-top:4px;font-variant-numeric:tabular-nums}
+  .kpi .sub{font-size:.76rem;color:var(--ink2);margin-top:2px}
+  .kpi .up{color:var(--s6)} .kpi .down{color:var(--s4)}
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}
+  @media(max-width:820px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--surface);border:1px solid var(--ring);border-radius:14px;padding:16px 16px 10px}
+  .card h3{margin:0 0 2px;font-size:1rem}
+  .card .cap{margin:0 0 10px;color:var(--ink2);font-size:.8rem}
+  .chartbox{position:relative;height:280px}
+  .full{grid-column:1/-1}
+  section h2{font-size:1.15rem;margin:34px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--grid)}
+  table{width:100%;border-collapse:collapse;font-size:.86rem}
+  th,td{padding:7px 9px;text-align:right;border-bottom:1px solid var(--grid);font-variant-numeric:tabular-nums}
+  th:first-child,td:first-child{text-align:left}
+  thead th{color:var(--muted);font-weight:600;font-size:.75rem;text-transform:uppercase;letter-spacing:.03em}
+  tbody tr:hover{background:var(--ring)}
+  .tag{display:inline-block;background:var(--accent);color:#fff;border-radius:6px;padding:1px 7px;font-size:.72rem;font-weight:600}
+  .note{color:var(--muted);font-size:.78rem;margin-top:8px}
+  .foot{margin-top:40px;color:var(--muted);font-size:.78rem;border-top:1px solid var(--grid);padding-top:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Observatorio de Tráfico de Marbella</h1>
+    <p>Serie histórica y comparativas a partir de los datos municipales de la DGT.</p>
+    <p class="src">Fuente: <a href="https://www.dgt.es/menusecundario/dgt-en-cifras/" target="_blank" rel="noopener">DGT en cifras — Información municipal</a> · <span id="genfecha"></span></p>
+  </header>
+
+  <div class="kpis" id="kpis"></div>
+
+  <section>
+    <h2>Parque de vehículos y motorización</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Población y parque de vehículos</h3>
+        <p class="cap">Marbella · valores absolutos</p>
+        <div class="chartbox"><canvas id="c_pobveh"></canvas></div>
+      </div>
+      <div class="card">
+        <h3>Motorización — vehículos por 1.000 habitantes</h3>
+        <p class="cap">Marbella frente a su entorno</p>
+        <div class="chartbox"><canvas id="c_motor"></canvas></div>
+      </div>
+      <div class="card">
+        <h3>Composición del parque por combustible</h3>
+        <p class="cap">Marbella · turismos y motos por tipo (desde 2024)</p>
+        <div class="chartbox"><canvas id="c_comb"></canvas></div>
+      </div>
+      <div class="card">
+        <h3>Calidad ambiental del parque</h3>
+        <p class="cap">Marbella · % con distintivo ECO+0 vs sin distintivo</p>
+        <div class="chartbox"><canvas id="c_amb"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Siniestralidad vial</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Accidentes con víctimas</h3>
+        <p class="cap">Marbella · número anual</p>
+        <div class="chartbox"><canvas id="c_acc"></canvas></div>
+      </div>
+      <div class="card">
+        <h3>Víctimas: fallecidos y heridos hospitalizados</h3>
+        <p class="cap">Marbella · número anual</p>
+        <div class="chartbox"><canvas id="c_vict"></canvas></div>
+      </div>
+      <div class="card full">
+        <h3>Tasa de accidentalidad comparada</h3>
+        <p class="cap">Accidentes con víctimas por cada 10.000 habitantes</p>
+        <div class="chartbox"><canvas id="c_tasa"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Sanciones y puntos</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Sanciones con puntos y puntos detraídos</h3>
+        <p class="cap">Marbella · número anual</p>
+        <div class="chartbox"><canvas id="c_sanc"></canvas></div>
+      </div>
+      <div class="card">
+        <h3>Sanciones por tipo de infracción</h3>
+        <p class="cap">Marbella · último año disponible</p>
+        <div class="chartbox"><canvas id="c_sanctipo"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Comparativa <span class="tag" id="cmpyear"></span></h2>
+    <div class="card full">
+      <table id="cmptable"><thead></thead><tbody></tbody></table>
+      <p class="note">Marbella y Málaga capital son municipios individuales; provincia, Andalucía y España son agregados de todos sus municipios.</p>
+    </div>
+  </section>
+
+  <div class="foot">
+    <p>Datos oficiales de la Dirección General de Tráfico (DGT en cifras · Información municipal). Actualización automática mensual vía GitHub Actions.
+    Descarga el <a href="./Observatorio_Trafico_Marbella_DGT.xlsx" id="xlsxlink">Excel completo</a> · <a href="./trafico_marbella.json">datos en JSON</a>.</p>
+    <p>Observatorio DTI Marbella · construido con datos abiertos de la DGT.</p>
+  </div>
+</div>
+
+<script type="module">
+const css = k => getComputedStyle(document.documentElement).getPropertyValue(k).trim();
+const PAL = ['--s1','--s2','--s3','--s4','--s5','--s6'].map(css);
+const INK=css('--ink'), INK2=css('--ink2'), MUTED=css('--muted'), GRID=css('--grid'), AXIS=css('--axis');
+const nf = new Intl.NumberFormat('es-ES');
+const nf1 = new Intl.NumberFormat('es-ES',{maximumFractionDigits:1});
+
+const data = await fetch('./trafico_marbella.json').then(r=>r.json());
+document.getElementById('genfecha').textContent =
+  'Generado ' + new Date(data.meta.generado).toLocaleDateString('es-ES',{year:'numeric',month:'long',day:'numeric'});
+document.getElementById('xlsxlink').setAttribute('download','');
+
+// --- helpers ---
+const D = data.datasets;
+function colVal(ds, scope, year, ...keys){
+  const row = ((D[ds].series[scope]||{})[String(year)])||null;
+  if(!row) return null;
+  const low={}; for(const k in row) low[k.toLowerCase()]=row[k];
+  for(const k of keys){ if(k.toLowerCase() in low) return low[k.toLowerCase()]; }
+  for(const k of keys){ for(const c in row){ if(c.toLowerCase().includes(k.toLowerCase())) return row[c]; } }
+  return null;
+}
+const years = ds => D[ds].anios.map(String);
+const seriesArr = (ds,scope,...keys)=> years(ds).map(y=>colVal(ds,scope,y,...keys));
+
+Chart.defaults.font.family='system-ui,-apple-system,"Segoe UI",sans-serif';
+Chart.defaults.color=INK2;
+const baseOpts = (fmt=nf)=>({
+  responsive:true, maintainAspectRatio:false,
+  interaction:{mode:'index',intersect:false},
+  plugins:{
+    legend:{labels:{color:INK2,usePointStyle:true,pointStyleWidth:10,boxHeight:7}},
+    tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${c.parsed.y==null?'—':fmt.format(c.parsed.y)}`}}
+  },
+  scales:{
+    x:{grid:{color:GRID,drawTicks:false},border:{color:AXIS},ticks:{color:MUTED}},
+    y:{grid:{color:GRID,drawTicks:false},border:{display:false},ticks:{color:MUTED,callback:v=>fmt.format(v)},beginAtZero:false}
+  }
+});
+const line = (id,cfg)=> new Chart(document.getElementById(id),{type:'line',...cfg});
+const mkLine=(label,arr,color,fill=false)=>({label,data:arr,borderColor:color,backgroundColor:fill?color+'22':color,
+  borderWidth:2,tension:.25,pointRadius:2.5,pointHoverRadius:5,fill});
+
+// --- KPIs (último año) ---
+const yG = Math.max(...D.general.anios), yGp = yG-1;
+const yS = Math.max(...D.siniestralidad.anios);
+const pob = colVal('general','Marbella',yG,'Población Total','Poblaci');
+const parque = colVal('general','Marbella',yG,'Parque Total');
+const motor = parque/pob*1000;
+const eco = (colVal('general','Marbella',yG,'Distintivo ECO')||0)+(colVal('general','Marbella',yG,'Distintivo 0')||0);
+const pctLimpio = eco/parque*100;
+const acc = colVal('siniestralidad','Marbella',yS,'Nº Accidentes con Víctimas','Accidentes con V');
+const fall = colVal('siniestralidad','Marbella',yS,'Fallecidos');
+function delta(cur,prev){ if(cur==null||prev==null) return ''; const d=(cur/prev-1)*100;
+  const cls=d>=0?'up':'down'; return `<span class="${cls}">${d>=0?'▲':'▼'} ${nf1.format(Math.abs(d))}%</span> vs ${yGp}`; }
+const kpis=[
+  ['Población',nf.format(pob),delta(pob,colVal('general','Marbella',yGp,'Poblaci')),yG],
+  ['Parque de vehículos',nf.format(parque),delta(parque,colVal('general','Marbella',yGp,'Parque Total')),yG],
+  ['Veh. / 1.000 hab.',nf1.format(motor),'motorización',yG],
+  ['Parque ECO+0',nf1.format(pctLimpio)+'%',delta(eco,(colVal('general','Marbella',yGp,'Distintivo ECO')||0)+(colVal('general','Marbella',yGp,'Distintivo 0')||0)),yG],
+  ['Accidentes c/víctimas',nf.format(acc),'año '+yS,yS],
+  ['Fallecidos',nf.format(fall),'año '+yS,yS],
+];
+document.getElementById('kpis').innerHTML = kpis.map(k=>
+  `<div class="kpi"><div class="lbl">${k[0]}</div><div class="val">${k[1]}</div><div class="sub">${k[2]}</div></div>`).join('');
+
+// --- Chart: población y parque ---
+line('c_pobveh',{data:{labels:years('general'),datasets:[
+  mkLine('Población',seriesArr('general','Marbella','Poblaci'),PAL[0]),
+  mkLine('Parque total',seriesArr('general','Marbella','Parque Total'),PAL[1]),
+  mkLine('Turismos',seriesArr('general','Marbella','Parque Turismos'),PAL[2]),
+]},options:baseOpts()});
+
+// --- Chart: motorización comparada ---
+const motorScope = sc => years('general').map(y=>{const p=colVal('general',sc,y,'Poblaci'),t=colVal('general',sc,y,'Parque Total');return (p&&t)?t/p*1000:null;});
+line('c_motor',{data:{labels:years('general'),datasets:[
+  mkLine('Marbella',motorScope('Marbella'),PAL[0]),
+  mkLine('Provincia Málaga',motorScope('Provincia Málaga'),PAL[3]),
+  mkLine('Andalucía',motorScope('Andalucía'),PAL[4]),
+  mkLine('España',motorScope('España'),PAL[5]),
+]},options:baseOpts(nf1)});
+
+// --- Chart: composición por combustible (barras, último año) ---
+const fuels=['Gasolina','Diesel','Electrificado','GLP','GNL'];
+const fuelVals=fuels.map(f=>colVal('general','Marbella',yG,f)).map(v=>v||0);
+new Chart(document.getElementById('c_comb'),{type:'bar',
+  data:{labels:fuels,datasets:[{label:'Vehículos '+yG,data:fuelVals,
+    backgroundColor:[PAL[2],PAL[1],PAL[0],PAL[3],PAL[4]],borderRadius:4,borderSkipped:false}]},
+  options:{...baseOpts(),plugins:{legend:{display:false},tooltip:baseOpts().plugins.tooltip}}});
+
+// --- Chart: calidad ambiental % ---
+const pctEco = years('general').map(y=>{const p=colVal('general','Marbella',y,'Parque Total');
+  const e=(colVal('general','Marbella',y,'Distintivo ECO')||0)+(colVal('general','Marbella',y,'Distintivo 0')||0);
+  return (p&&e)?e/p*100:null;});
+const pctSin = years('general').map(y=>{const p=colVal('general','Marbella',y,'Parque Total'),s=colVal('general','Marbella',y,'Sin Distintivo');
+  return (p&&s)?s/p*100:null;});
+line('c_amb',{data:{labels:years('general'),datasets:[
+  mkLine('% ECO+0 (limpio)',pctEco,PAL[3],true),
+  mkLine('% sin distintivo',pctSin,PAL[5],true),
+]},options:baseOpts(nf1)});
+
+// --- Chart: accidentes ---
+line('c_acc',{data:{labels:years('siniestralidad'),datasets:[
+  mkLine('Accidentes con víctimas',seriesArr('siniestralidad','Marbella','Nº Accidentes con Víctimas','Accidentes con V'),PAL[5],true),
+]},options:{...baseOpts(),plugins:{legend:{display:false},tooltip:baseOpts().plugins.tooltip}}});
+
+// --- Chart: víctimas ---
+line('c_vict',{data:{labels:years('siniestralidad'),datasets:[
+  mkLine('Fallecidos',seriesArr('siniestralidad','Marbella','Fallecidos'),PAL[5]),
+  mkLine('Heridos hospitalizados',seriesArr('siniestralidad','Marbella','Heridos Hospitalizados'),PAL[2]),
+]},options:baseOpts()});
+
+// --- Chart: tasa comparada ---
+const tasaScope = sc => years('siniestralidad').map(y=>{const a=colVal('siniestralidad',sc,y,'Nº Accidentes con Víctimas','Accidentes con V');
+  const p=colVal('general',sc,y,'Poblaci'); return (a!=null&&p)?a/p*10000:null;});
+line('c_tasa',{data:{labels:years('siniestralidad'),datasets:[
+  mkLine('Marbella',tasaScope('Marbella'),PAL[0]),
+  mkLine('Provincia Málaga',tasaScope('Provincia Málaga'),PAL[3]),
+  mkLine('Andalucía',tasaScope('Andalucía'),PAL[4]),
+  mkLine('España',tasaScope('España'),PAL[5]),
+]},options:baseOpts(nf1)});
+
+// --- Chart: sanciones ---
+line('c_sanc',{data:{labels:years('sanciones'),datasets:[
+  mkLine('Sanciones con puntos',seriesArr('sanciones','Marbella','Total Sanciones con Puntos'),PAL[0]),
+  mkLine('Puntos detraídos',seriesArr('sanciones','Marbella','Total Puntos Detraídos'),PAL[5]),
+]},options:baseOpts()});
+
+// --- Chart: sanciones por tipo (último año) ---
+const yQ = Math.max(...D.sanciones.anios);
+const tipos=[['Velocidad','Velocidad'],['Alcohol','Alcohol'],['Drogas','Drogas'],
+  ['Cinturón/casco','Casco'],['Móvil','Móvil'],['Semáforo','Semáforo'],['Otras','Otra']];
+const tipoVals=tipos.map(([_,k])=>{let s=0;const row=D.sanciones.series['Marbella'][String(yQ)]||{};
+  for(const c in row){ if(c.toLowerCase().includes(k.toLowerCase())) s+=(row[c]||0);} return s;});
+new Chart(document.getElementById('c_sanctipo'),{type:'bar',
+  data:{labels:tipos.map(t=>t[0]),datasets:[{label:'Sanciones '+yQ,data:tipoVals,
+    backgroundColor:PAL[0],borderRadius:4,borderSkipped:false}]},
+  options:{...baseOpts(),indexAxis:'y',plugins:{legend:{display:false},tooltip:baseOpts().plugins.tooltip}}});
+
+// --- Tabla comparativa ---
+document.getElementById('cmpyear').textContent = yG;
+const scopes=data.meta.ambitos;
+const rowsDef=[
+  ['Población',()=>scopes.map(s=>colVal('general',s,yG,'Poblaci'))],
+  ['Censo de conductores',()=>scopes.map(s=>colVal('general',s,yG,'Censo Conductores'))],
+  ['Parque total',()=>scopes.map(s=>colVal('general',s,yG,'Parque Total'))],
+  ['Veh. / 1.000 hab.',()=>scopes.map(s=>{const p=colVal('general',s,yG,'Poblaci'),t=colVal('general',s,yG,'Parque Total');return p?t/p*1000:null;}),1],
+  ['% parque ECO+0',()=>scopes.map(s=>{const p=colVal('general',s,yG,'Parque Total');const e=(colVal('general',s,yG,'Distintivo ECO')||0)+(colVal('general',s,yG,'Distintivo 0')||0);return p?e/p*100:null;}),1],
+  ['% sin distintivo',()=>scopes.map(s=>{const p=colVal('general',s,yG,'Parque Total'),x=colVal('general',s,yG,'Sin Distintivo');return p?x/p*100:null;}),1],
+  ['Antigüedad media parque',()=>scopes.map(s=>colVal('general',s,yG,'Antigüedad Media del Parque','Antig')),1],
+];
+document.querySelector('#cmptable thead').innerHTML =
+  '<tr><th>Indicador</th>'+scopes.map(s=>`<th>${s}</th>`).join('')+'</tr>';
+document.querySelector('#cmptable tbody').innerHTML = rowsDef.map(([lbl,fn,dec])=>{
+  const vals=fn(); const f=dec?nf1:nf;
+  return `<tr><td>${lbl}</td>`+vals.map(v=>`<td>${v==null?'—':f.format(v)}${dec&&lbl.startsWith('%')?'%':''}</td>`).join('')+'</tr>';
+}).join('');
+</script>
+</body>
+</html>
