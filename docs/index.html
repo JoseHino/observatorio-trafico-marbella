@@ -50,14 +50,52 @@
   .tag{display:inline-block;background:var(--accent);color:#fff;border-radius:6px;padding:1px 7px;font-size:.72rem;font-weight:600}
   .note{color:var(--muted);font-size:.78rem;margin-top:8px}
   .foot{margin-top:40px;color:var(--muted);font-size:.78rem;border-top:1px solid var(--grid);padding-top:14px}
+  .htop{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+  .btn{background:var(--accent);color:#fff;border:0;border-radius:10px;padding:11px 16px;
+    font-size:.9rem;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit}
+  .btn:hover{filter:brightness(1.08)} .btn:active{transform:translateY(1px)}
+  .btn:disabled{opacity:.6;cursor:progress}
+
+  /* ---- Informe imprimible (oculto en pantalla, visible al imprimir) ---- */
+  #report{display:none}
+  @media print{
+    @page{size:A4;margin:15mm}
+    .wrap{display:none !important}
+    #report{display:block !important;color:#0b0b0b;font-size:11px;line-height:1.5}
+    #report *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    #report h1{font-size:20px;color:#1F4E79;margin:0 0 2px}
+    #report h2{font-size:13px;color:#1F4E79;border-bottom:2px solid #1F4E79;
+      padding-bottom:3px;margin:16px 0 8px;page-break-after:avoid}
+    #report .rmeta{color:#52514e;font-size:10px}
+    #report .lead{font-size:11.5px;text-align:justify}
+    #report p{margin:0 0 7px}
+    #report .rkpis{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0}
+    #report .rkpi{border:1px solid #c9d4e2;border-radius:7px;padding:7px 11px;min-width:120px}
+    #report .rkpi b{display:block;font-size:16px;color:#1F4E79}
+    #report .rkpi span{font-size:9px;color:#52514e;text-transform:uppercase;letter-spacing:.03em}
+    #report img.chart{width:100%;border:1px solid #e1e0d9;border-radius:6px;margin:4px 0}
+    #report .g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    #report table{width:100%;border-collapse:collapse;font-size:10px}
+    #report th,#report td{border:1px solid #d5dbe4;padding:4px 6px;text-align:right}
+    #report th:first-child,#report td:first-child{text-align:left}
+    #report thead th{background:#1F4E79;color:#fff}
+    #report .rfoot{margin-top:14px;border-top:1px solid #c9d4e2;padding-top:6px;
+      color:#52514e;font-size:9px}
+    #report .block{page-break-inside:avoid}
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <h1>Observatorio de Tráfico de Marbella</h1>
-    <p>Serie histórica y comparativas a partir de los datos municipales de la DGT.</p>
-    <p class="src">Fuente: <a href="https://www.dgt.es/menusecundario/dgt-en-cifras/" target="_blank" rel="noopener">DGT en cifras — Información municipal</a> · <span id="genfecha"></span></p>
+    <div class="htop">
+      <div>
+        <h1>Observatorio de Tráfico de Marbella</h1>
+        <p>Serie histórica y comparativas a partir de los datos municipales de la DGT.</p>
+        <p class="src">Fuente: <a href="https://www.dgt.es/menusecundario/dgt-en-cifras/" target="_blank" rel="noopener">DGT en cifras — Información municipal</a> · <span id="genfecha"></span></p>
+      </div>
+      <button id="btnpdf" class="btn" type="button">📄 Generar informe PDF</button>
+    </div>
   </header>
 
   <div class="kpis" id="kpis"></div>
@@ -139,6 +177,8 @@
     <p>Observatorio DTI Marbella · construido con datos abiertos de la DGT.</p>
   </div>
 </div>
+
+<div id="report"></div>
 
 <script type="module">
 const css = k => getComputedStyle(document.documentElement).getPropertyValue(k).trim();
@@ -297,6 +337,153 @@ document.querySelector('#cmptable tbody').innerHTML = rowsDef.map(([lbl,fn,dec])
   const vals=fn(); const f=dec?nf1:nf;
   return `<tr><td>${lbl}</td>`+vals.map(v=>`<td>${v==null?'—':f.format(v)}${dec&&lbl.startsWith('%')?'%':''}</td>`).join('')+'</tr>';
 }).join('');
+
+/* =================== INFORME PDF =================== */
+const LP=['#2a78d6','#1baf7a','#eda100','#008300','#4a3aa7','#e34948'];
+const mkR=(label,arr,color,fill)=>({label,data:arr,borderColor:color,
+  backgroundColor:fill?color+'22':color,borderWidth:2,tension:.25,pointRadius:2,fill:!!fill});
+function chartImg(type,labels,datasets,fmt){
+  const cv=document.createElement('canvas'); cv.width=1000; cv.height=430;
+  const host=document.createElement('div');
+  host.style.cssText='position:fixed;left:-99999px;top:0;width:1000px;height:430px';
+  host.appendChild(cv); document.body.appendChild(host);
+  const ch=new Chart(cv,{type,data:{labels,datasets},options:{
+    responsive:false,animation:false,devicePixelRatio:2,
+    plugins:{legend:{labels:{color:'#52514e',usePointStyle:true,pointStyleWidth:12,boxHeight:7,font:{size:13}}}},
+    scales:{
+      x:{grid:{color:'#e1e0d9',drawTicks:false},border:{color:'#c3c2b7'},ticks:{color:'#52514e',font:{size:12}}},
+      y:{grid:{color:'#e1e0d9',drawTicks:false},border:{display:false},ticks:{color:'#52514e',font:{size:12},callback:v=>fmt.format(v)}}
+    }}});
+  ch.update('none');
+  const url=cv.toDataURL('image/png');
+  ch.destroy(); host.remove();
+  return url;
+}
+function rate(dsScope, sc, y, keys, pop, k){
+  const a=colVal(dsScope,sc,y,...keys), p=colVal('general',sc,y,'Poblaci');
+  return (a!=null&&p)?a/p*k:null;
+}
+function pct(n,d){ return (n!=null&&d)? n/d*100 : null; }
+function arrow(cur,prev){ if(cur==null||prev==null||prev===0) return '';
+  const d=(cur/prev-1)*100; const s=d>=0?'▲':'▼';
+  return ` (${s} ${nf1.format(Math.abs(d))}% vs ${+prev===prev?'':''}año anterior)`; }
+
+function buildReport(){
+  const yGp=yG-1, ySp=yS-1;
+  const pob=colVal('general','Marbella',yG,'Poblaci'), pobP=colVal('general','Marbella',yGp,'Poblaci');
+  const parque=colVal('general','Marbella',yG,'Parque Total'), parqueP=colVal('general','Marbella',yGp,'Parque Total');
+  const motor=pct(parque,pob)*10, motorEsp=(colVal('general','España',yG,'Parque Total')/colVal('general','España',yG,'Poblaci')*1000);
+  const motorProv=(colVal('general','Provincia Málaga',yG,'Parque Total')/colVal('general','Provincia Málaga',yG,'Poblaci')*1000);
+  const eco=(colVal('general','Marbella',yG,'Distintivo ECO')||0)+(colVal('general','Marbella',yG,'Distintivo 0')||0);
+  const pctLimpio=pct(eco,parque), pctSinNow=pct(colVal('general','Marbella',yG,'Sin Distintivo'),parque);
+  const antig=colVal('general','Marbella',yG,'Antigüedad Media del Parque','Antig');
+  const elec=colVal('general','Marbella',yG,'Electrificado');
+  const acc=colVal('siniestralidad','Marbella',yS,'Nº Accidentes con Víctimas','Accidentes con V');
+  const accP=colVal('siniestralidad','Marbella',ySp,'Nº Accidentes con Víctimas','Accidentes con V');
+  const fall=colVal('siniestralidad','Marbella',yS,'Fallecidos');
+  const hosp=colVal('siniestralidad','Marbella',yS,'Heridos Hospitalizados');
+  const peat=colVal('siniestralidad','Marbella',yS,'Peatones Heridos Leves');
+  const tasaMar=rate('siniestralidad','Marbella',yS,['Nº Accidentes con Víctimas','Accidentes con V'],pob,10000);
+  const tasaEsp=rate('siniestralidad','España',yS,['Nº Accidentes con Víctimas','Accidentes con V'],pob,10000);
+  const sanc=colVal('sanciones','Marbella',yQ,'Total Sanciones con Puntos');
+  const puntos=colVal('sanciones','Marbella',yQ,'Total Puntos Detraídos');
+
+  // gráficos (versión clara)
+  const imgPV=chartImg('line',years('general'),[
+    mkR('Población',seriesArr('general','Marbella','Poblaci'),LP[0]),
+    mkR('Parque total',seriesArr('general','Marbella','Parque Total'),LP[1]),
+    mkR('Turismos',seriesArr('general','Marbella','Parque Turismos'),LP[2])],nf);
+  const imgMot=chartImg('line',years('general'),[
+    mkR('Marbella',years('general').map(y=>pct(colVal('general','Marbella',y,'Parque Total'),colVal('general','Marbella',y,'Poblaci'))*10),LP[0]),
+    mkR('Provincia Málaga',years('general').map(y=>pct(colVal('general','Provincia Málaga',y,'Parque Total'),colVal('general','Provincia Málaga',y,'Poblaci'))*10),LP[3]),
+    mkR('España',years('general').map(y=>pct(colVal('general','España',y,'Parque Total'),colVal('general','España',y,'Poblaci'))*10),LP[5])],nf1);
+  const imgAmb=chartImg('line',years('general'),[
+    mkR('% ECO+0',pctEco,LP[3],true), mkR('% sin distintivo',pctSin,LP[5],true)],nf1);
+  const imgTasa=chartImg('line',years('siniestralidad'),[
+    mkR('Marbella',tasaScope('Marbella'),LP[0]),
+    mkR('Provincia Málaga',tasaScope('Provincia Málaga'),LP[3]),
+    mkR('España',tasaScope('España'),LP[5])],nf1);
+
+  const F=nf.format, F1=nf1.format;
+  const kpi=(v,l)=>`<div class="rkpi"><b>${v}</b><span>${l}</span></div>`;
+  const cmpRows=[
+    ['Población',s=>colVal('general',s,yG,'Poblaci'),0],
+    ['Parque total',s=>colVal('general',s,yG,'Parque Total'),0],
+    ['Veh./1.000 hab.',s=>pct(colVal('general',s,yG,'Parque Total'),colVal('general',s,yG,'Poblaci'))*10,1],
+    ['% ECO+0',s=>pct((colVal('general',s,yG,'Distintivo ECO')||0)+(colVal('general',s,yG,'Distintivo 0')||0),colVal('general',s,yG,'Parque Total')),1,'%'],
+    ['% sin distintivo',s=>pct(colVal('general',s,yG,'Sin Distintivo'),colVal('general',s,yG,'Parque Total')),1,'%'],
+    ['Antigüedad media',s=>colVal('general',s,yG,'Antigüedad Media del Parque','Antig'),1],
+  ];
+  const cmpHTML=`<table><thead><tr><th>Indicador</th>${scopes.map(s=>`<th>${s}</th>`).join('')}</tr></thead>
+    <tbody>${cmpRows.map(([l,fn,d,suf])=>`<tr><td>${l}</td>${scopes.map(s=>{
+      const v=fn(s); return `<td>${v==null?'—':(d?F1(v):F(v))}${suf||''}</td>`;}).join('')}</tr>`).join('')}</tbody></table>`;
+
+  const hoy=new Date(data.meta.generado).toLocaleDateString('es-ES',{year:'numeric',month:'long',day:'numeric'});
+  document.getElementById('report').innerHTML=`
+    <h1>Informe de situación · Tráfico en Marbella</h1>
+    <p class="rmeta">Datos oficiales de la DGT (DGT en cifras · Información municipal) · Elaborado el ${hoy}</p>
+
+    <h2>Resumen ejecutivo</h2>
+    <p class="lead">En ${yG}, Marbella cuenta con <b>${F(pob)} habitantes</b> y un parque de
+      <b>${F(parque)} vehículos</b>, equivalente a <b>${F1(motor)} vehículos por cada 1.000 habitantes</b>.
+      Esta motorización se sitúa por encima de la media de España (${F1(motorEsp)}) y de la provincia de
+      Málaga (${F1(motorProv)}), en línea con el carácter residencial y turístico del municipio.</p>
+    <p class="lead">En términos ambientales, el <b>${F1(pctSinNow)}%</b> del parque circula todavía sin distintivo
+      ambiental, frente a un <b>${F1(pctLimpio)}%</b> que ya dispone de etiqueta ECO o CERO (${F(eco)} vehículos,
+      de ellos ${F(elec)} electrificados). La antigüedad media del parque es de <b>${F1(antig)} años</b>.</p>
+    <p class="lead">En seguridad vial, el último año disponible (${yS}) registró <b>${F(acc)} accidentes con víctimas</b>${accP!=null?arrow(acc,accP):''},
+      con <b>${F(fall)} fallecidos</b> y ${F(hosp)} heridos hospitalizados. La tasa de accidentalidad fue de
+      <b>${F1(tasaMar)} accidentes por cada 10.000 habitantes</b>${tasaEsp!=null?`, frente a ${F1(tasaEsp)} en el conjunto de España`:''}.</p>
+    <p class="lead">En el ámbito sancionador, en ${yQ} se tramitaron <b>${F(sanc)} sanciones con detracción de puntos</b>
+      en el municipio, con un total de ${F(puntos)} puntos detraídos.</p>
+
+    <div class="rkpis block">
+      ${kpi(F(pob),'Población '+yG)}
+      ${kpi(F(parque),'Parque vehículos')}
+      ${kpi(F1(motor),'Veh./1.000 hab.')}
+      ${kpi(F1(pctLimpio)+'%','Parque ECO+0')}
+      ${kpi(F(acc),'Accidentes '+yS)}
+      ${kpi(F(fall),'Fallecidos '+yS)}
+    </div>
+
+    <h2>Parque de vehículos y motorización</h2>
+    <div class="g2 block">
+      <div><img class="chart" src="${imgPV}"><p class="rmeta">Población y parque de vehículos (Marbella).</p></div>
+      <div><img class="chart" src="${imgMot}"><p class="rmeta">Motorización comparada (veh./1.000 hab.).</p></div>
+    </div>
+    <div class="g2 block">
+      <div><img class="chart" src="${imgAmb}"><p class="rmeta">Calidad ambiental del parque (%).</p></div>
+      <div><img class="chart" src="${imgTasa}"><p class="rmeta">Tasa de accidentalidad comparada.</p></div>
+    </div>
+
+    <h2>Comparativa ${yG} — Marbella frente a su entorno</h2>
+    <div class="block">${cmpHTML}
+    <p class="rmeta">Marbella y Málaga capital son municipios; provincia, Andalucía y España son agregados.</p></div>
+
+    <div class="rfoot">Fuente: Dirección General de Tráfico — DGT en cifras (Información municipal).
+      Cobertura: general ${Math.min(...D.general.anios)}–${Math.max(...D.general.anios)},
+      siniestralidad ${Math.min(...D.siniestralidad.anios)}–${Math.max(...D.siniestralidad.anios)},
+      sanciones ${Math.min(...D.sanciones.anios)}–${Math.max(...D.sanciones.anios)}.
+      Observatorio DTI Marbella · josehino.github.io/observatorio-trafico-marbella</div>`;
+}
+
+document.getElementById('btnpdf').addEventListener('click',()=>{
+  const btn=document.getElementById('btnpdf');
+  btn.disabled=true; btn.textContent='Preparando informe…';
+  const prevTitle=document.title;
+  try{
+    buildReport();
+    document.title=`Informe_Trafico_Marbella_${yG}`;
+    const restore=()=>{document.title=prevTitle; btn.disabled=false; btn.textContent='📄 Generar informe PDF';
+      window.removeEventListener('afterprint',restore);};
+    window.addEventListener('afterprint',restore);
+    setTimeout(()=>window.print(),120);
+  }catch(e){
+    console.error('Error generando informe',e);
+    btn.disabled=false; btn.textContent='📄 Generar informe PDF';
+    alert('No se pudo generar el informe: '+e.message);
+  }
+});
 </script>
 </body>
 </html>
