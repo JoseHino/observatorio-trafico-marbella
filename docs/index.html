@@ -10,6 +10,7 @@
     --plane:#f9f9f7; --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#898781;
     --grid:#e1e0d9; --axis:#c3c2b7; --ring:rgba(11,11,11,.10);
     --s1:#2a78d6; --s2:#1baf7a; --s3:#eda100; --s4:#008300; --s5:#4a3aa7; --s6:#e34948;
+    --s7:#e87ba4; --s8:#eb6834;
     --accent:#1F4E79;
   }
   @media (prefers-color-scheme: dark){
@@ -17,6 +18,7 @@
       --plane:#0d0d0d; --surface:#1a1a19; --ink:#fff; --ink2:#c3c2b7; --muted:#898781;
       --grid:#2c2c2a; --axis:#383835; --ring:rgba(255,255,255,.10);
       --s1:#3987e5; --s2:#199e70; --s3:#c98500; --s4:#008300; --s5:#9085e9; --s6:#e66767;
+      --s7:#d55181; --s8:#d95926;
       --accent:#8fb7e0;
     }
   }
@@ -50,6 +52,13 @@
   .tag{display:inline-block;background:var(--accent);color:#fff;border-radius:6px;padding:1px 7px;font-size:.72rem;font-weight:600}
   .note{color:var(--muted);font-size:.78rem;margin-top:8px}
   .foot{margin-top:40px;color:var(--muted);font-size:.78rem;border-top:1px solid var(--grid);padding-top:14px}
+  .controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+  .tabs{display:inline-flex;gap:4px;background:var(--surface);border:1px solid var(--ring);border-radius:10px;padding:4px}
+  .tabs button{border:0;background:transparent;color:var(--ink2);padding:7px 14px;border-radius:7px;
+    cursor:pointer;font-family:inherit;font-size:.86rem;font-weight:600}
+  .tabs button.active{background:var(--accent);color:#fff}
+  .sel{background:var(--surface);color:var(--ink);border:1px solid var(--ring);border-radius:9px;
+    padding:9px 12px;font-family:inherit;font-size:.86rem;min-width:240px;cursor:pointer}
   .htop{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
   .btn{background:var(--accent);color:#fff;border:0;border-radius:10px;padding:11px 16px;
     font-size:.9rem;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit}
@@ -160,6 +169,21 @@
         <p class="cap">Marbella · último año disponible</p>
         <div class="chartbox"><canvas id="c_sanctipo"></canvas></div>
       </div>
+    </div>
+  </section>
+
+  <section id="explorador">
+    <h2>Explorador de datos — todos los indicadores DGT</h2>
+    <p class="cap" style="margin:0 0 14px;color:var(--ink2)">Marbella · elige el conjunto y el grupo de indicadores. Haz clic en la leyenda para mostrar/ocultar cada serie. La tabla inferior muestra el valor exacto de cada año.</p>
+    <div class="controls">
+      <div class="tabs" id="ds_tabs"></div>
+      <select id="grp_sel" class="sel" aria-label="Grupo de indicadores"></select>
+    </div>
+    <div class="card">
+      <div class="chartbox" style="height:360px"><canvas id="c_explora"></canvas></div>
+    </div>
+    <div class="card" style="margin-top:14px;overflow-x:auto">
+      <table id="exptable"><thead></thead><tbody></tbody></table>
     </div>
   </section>
 
@@ -337,6 +361,91 @@ document.querySelector('#cmptable tbody').innerHTML = rowsDef.map(([lbl,fn,dec])
   const vals=fn(); const f=dec?nf1:nf;
   return `<tr><td>${lbl}</td>`+vals.map(v=>`<td>${v==null?'—':f.format(v)}${dec&&lbl.startsWith('%')?'%':''}</td>`).join('')+'</tr>';
 }).join('');
+
+/* =================== EXPLORADOR DE DATOS =================== */
+const PAL8=['--s1','--s2','--s3','--s4','--s5','--s6','--s7','--s8'].map(css);
+// Grupos de indicadores por dataset. `test` selecciona columnas por su nombre;
+// así aparece hasta la última columna que publique la DGT sin tocar el código.
+const GROUPS = {
+  general: [
+    ['Parque por tipo de vehículo', c=>c.startsWith('Parque ') && !c.includes('(')],
+    ['Turismos por antigüedad', c=>c.startsWith('Parque Turismos')],
+    ['Motocicletas por antigüedad', c=>c.startsWith('Parque Motocicletas')],
+    ['Ciclomotores por antigüedad', c=>c.startsWith('Parque Ciclomotores')],
+    ['Furgonetas por antigüedad', c=>c.startsWith('Parque Furgonetas')],
+    ['Camiones por antigüedad', c=>c.startsWith('Parque Camiones')],
+    ['Antigüedad media del parque (años)', c=>c.startsWith('Antigüedad Media'), 1],
+    ['Vehículos sin ITV', c=>c.includes('sin ITV')],
+    ['Combustible / propulsión', c=>['Gasolina','Diesel','Electrificado','GLP','GNL','Otros Tipos'].some(k=>c.includes(k))],
+    ['Distintivo ambiental', c=>c.startsWith('Distintivo')||c==='Sin Distintivo'],
+    ['Población', c=>c.startsWith('Población')],
+    ['Conductores', c=>c.includes('Conductor')],
+    ['Campañas de control', c=>c.includes('Campañas')],
+  ],
+  siniestralidad: [
+    ['Resumen de siniestralidad', c=>c.includes('Accidentes')||c==='Fallecidos'||c.includes('Hospitalizados')],
+    ['Fallecidos por tipo de vehículo', c=>c.endsWith('Fallecidos') && c!=='Fallecidos'],
+    ['Heridos graves por tipo', c=>c.includes('Heridos Graves')],
+    ['Heridos leves por tipo', c=>c.includes('Heridos Leves')],
+    ['Peatones', c=>c.includes('Peatones')],
+  ],
+  sanciones: [
+    ['Totales', c=>c.startsWith('Total')],
+    ['Velocidad', c=>c.includes('Velocidad')],
+    ['Alcohol y drogas', c=>c.includes('Alcohol')||c.includes('Drogas')],
+    ['Cinturón, casco y SRI', c=>c.includes('Casco')],
+    ['Uso del móvil', c=>c.includes('Móvil')],
+    ['Semáforo', c=>c.includes('Semáforo')],
+    ['Otras infracciones', c=>c.startsWith('Otra')],
+  ],
+};
+const DS_LABEL={general:'Parque y conductores',siniestralidad:'Siniestralidad',sanciones:'Sanciones y puntos'};
+let expState={ds:'general',grp:0,chart:null};
+
+function groupCols(ds,idx){
+  const test=GROUPS[ds][idx][1];
+  return D[ds].columnas.filter(test);
+}
+function renderExplorer(){
+  const {ds,grp}=expState;
+  const cols=groupCols(ds,grp);
+  const dec=GROUPS[ds][grp][2]?nf1:nf;
+  const yrs=years(ds);
+  const datasets=cols.map((col,i)=>{
+    const arr=yrs.map(y=>colVal(ds,'Marbella',y,col));
+    const color=PAL8[i%8];
+    return {label:col,data:arr,borderColor:color,backgroundColor:color,
+      borderWidth:2,tension:.25,pointRadius:2,pointHoverRadius:5,fill:false};
+  });
+  if(expState.chart) expState.chart.destroy();
+  const o=baseOpts(dec);
+  o.plugins.legend.position='bottom';
+  expState.chart=new Chart(document.getElementById('c_explora'),{type:'line',data:{labels:yrs,datasets},options:o});
+  // tabla de valores exactos
+  document.querySelector('#exptable thead').innerHTML =
+    '<tr><th>Indicador</th>'+yrs.map(y=>`<th>${y}</th>`).join('')+'</tr>';
+  document.querySelector('#exptable tbody').innerHTML = cols.map(col=>{
+    return `<tr><td>${col}</td>`+yrs.map(y=>{const v=colVal(ds,'Marbella',y,col);
+      return `<td>${v==null?'—':dec.format(v)}</td>`;}).join('')+'</tr>';
+  }).join('');
+}
+function fillGroupSelect(){
+  document.getElementById('grp_sel').innerHTML =
+    GROUPS[expState.ds].map((g,i)=>`<option value="${i}">${g[0]}</option>`).join('');
+}
+// pestañas de dataset
+document.getElementById('ds_tabs').innerHTML =
+  Object.keys(GROUPS).map(k=>`<button data-ds="${k}"${k===expState.ds?' class="active"':''}>${DS_LABEL[k]}</button>`).join('');
+document.querySelectorAll('#ds_tabs button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#ds_tabs button').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');
+  expState.ds=b.dataset.ds; expState.grp=0;
+  fillGroupSelect(); renderExplorer();
+}));
+document.getElementById('grp_sel').addEventListener('change',e=>{
+  expState.grp=+e.target.value; renderExplorer();
+});
+fillGroupSelect(); renderExplorer();
 
 /* =================== INFORME PDF =================== */
 const LP=['#2a78d6','#1baf7a','#eda100','#008300','#4a3aa7','#e34948'];
