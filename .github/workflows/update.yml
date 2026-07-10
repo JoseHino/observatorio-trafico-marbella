@@ -2,8 +2,9 @@ name: Actualizar datos DGT
 
 on:
   schedule:
-    # Día 5 de cada mes a las 06:00 UTC (la DGT publica los ficheros ~noviembre;
-    # el resto de meses la ejecución simplemente no encuentra novedades).
+    # Día 5 de cada mes a las 06:00 UTC (la DGT publica los ficheros de forma
+    # irregular, sobre todo en primavera y otoño; revisar cada mes garantiza
+    # recoger la novedad en <=30 días la publique el día que la publique).
     - cron: "0 6 5 * *"
   workflow_dispatch:        # permite lanzarlo a mano desde la pestaña Actions
 
@@ -23,10 +24,20 @@ jobs:
       - name: Instalar dependencias
         run: pip install -r requirements.txt
 
+      - name: Firma de datos ANTES
+        id: prev
+        run: echo "hash=$(cat data/datahash.txt 2>/dev/null || echo none)" >> "$GITHUB_OUTPUT"
+
       - name: Descargar y procesar datos de la DGT
         run: |
           python scripts/collect.py
           python scripts/build_excel.py
+
+      - name: Firma de datos DESPUÉS
+        id: new
+        run: |
+          echo "hash=$(cat data/datahash.txt)" >> "$GITHUB_OUTPUT"
+          echo "anios=$(python -c "import json;d=json.load(open('data/trafico_marbella.json',encoding='utf-8'))['datasets'];print(' · '.join(f\"{k}: {min(v['anios'])}-{max(v['anios'])}\" for k,v in d.items()))")" >> "$GITHUB_OUTPUT"
 
       - name: Commit si hay cambios
         run: |
@@ -39,3 +50,32 @@ jobs:
             git commit -m "Actualización automática de datos DGT ($(date -u +%Y-%m-%d))"
             git push
           fi
+
+      - name: Aviso por email si hay DATOS NUEVOS
+        # Solo cuando la firma de contenido cambia (no en el latido mensual) y
+        # siempre que exista el secreto con la contraseña SMTP.
+        if: steps.prev.outputs.hash != steps.new.outputs.hash && steps.prev.outputs.hash != 'none' && env.MAIL_PASSWORD != ''
+        env:
+          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.MAIL_SERVER }}
+          server_port: ${{ secrets.MAIL_PORT }}
+          secure: true
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          from: Observatorio Tráfico Marbella <${{ secrets.MAIL_USERNAME }}>
+          to: proyectos1@ammaconsulting.com
+          subject: "🚦 Datos DGT actualizados — Observatorio Tráfico Marbella"
+          body: |
+            El robot ha detectado datos nuevos de la DGT y ha actualizado el observatorio.
+
+            Cobertura actual por dataset:
+            ${{ steps.new.outputs.anios }}
+
+            Dashboard:  https://josehino.github.io/observatorio-trafico-marbella/
+            Excel:      https://josehino.github.io/observatorio-trafico-marbella/Observatorio_Trafico_Marbella_DGT.xlsx
+            Repositorio: https://github.com/JoseHino/observatorio-trafico-marbella
+
+            (Aviso automático. Solo se envía cuando cambian las cifras, no en la
+            comprobación mensual rutinaria.)

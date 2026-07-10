@@ -15,6 +15,7 @@ Fuente: https://www.dgt.es/menusecundario/dgt-en-cifras/
 
 No requiere API key ni login: son descargas HTTP directas y estables.
 """
+import hashlib
 import io
 import json
 import re
@@ -224,7 +225,17 @@ def main():
     # copia servida por el dashboard
     (DOCS / "trafico_marbella.json").write_text(
         json.dumps(result, ensure_ascii=False), encoding="utf-8")
+
+    # Firma de contenido SOLO de los datos (excluye meta.generado, que cambia
+    # en cada ejecución). Sirve para distinguir "datos nuevos reales" del
+    # latido mensual y disparar el aviso por email únicamente cuando toca.
+    firma = hashlib.sha256(
+        json.dumps(result["datasets"], sort_keys=True, ensure_ascii=False).encode("utf-8")
+    ).hexdigest()
+    (DATA / "datahash.txt").write_text(firma, encoding="utf-8")
+
     print(f"\n[OK] JSON escrito. Años general={result['datasets']['general']['anios']}")
+    print(f"[OK] Firma de datos: {firma[:12]}...")
     return result
 
 
