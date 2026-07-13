@@ -194,6 +194,23 @@
     <p class="note">Fuente: estaciones de aforo MA-341 y MA-417 (seguimiento propio). Años sin datos (2019, 2020, 2022) omitidos.</p>
   </section>
 
+  <section id="criminalidad-sec">
+    <h2>Criminalidad · Ministerio del Interior</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Evolución de la criminalidad</h3>
+        <p class="cap">Infracciones penales conocidas · acumulado anual</p>
+        <div class="chartbox"><canvas id="c_crim_total"></canvas></div>
+      </div>
+      <div class="card">
+        <h3>Principales tipologías</h3>
+        <p class="cap">Último año disponible</p>
+        <div class="chartbox"><canvas id="c_crim_tipos"></canvas></div>
+      </div>
+    </div>
+    <p class="note">Fuente: Ministerio del Interior — Balance trimestral de criminalidad (Sistema Estadístico de Criminalidad). Acumulado enero-diciembre; cada año se consolida en el balance del año siguiente.</p>
+  </section>
+
   <section id="explorador">
     <h2>Explorador de datos — todos los indicadores DGT</h2>
     <p class="cap" style="margin:0 0 14px;color:var(--ink2)">Marbella · elige el conjunto y el grupo de indicadores. Haz clic en la leyenda para mostrar/ocultar cada serie. La tabla inferior muestra el valor exacto de cada año.</p>
@@ -427,9 +444,15 @@ const GROUPS = {
     ['Vehículos ligeros', c=>c.includes('Ligeros')],
     ['Vehículos pesados', c=>c.includes('Pesados')],
   ],
+  criminalidad: [
+    ['Totales', c=>c.includes('(total)')||c==='TOTAL criminalidad'],
+    ['Delitos violentos y sexuales', c=>c.includes('Homicidios')||c.includes('lesiones')||c.includes('sexual')||c.includes('Secuestro')||c.includes('violencia')],
+    ['Robos y hurtos', c=>c.includes('Robos')||c.includes('Hurtos')||c.includes('Sustracciones')],
+    ['Drogas y cibercriminalidad', c=>c.includes('drogas')||c.includes('informáticas')||c.includes('ciberdelitos')||c.includes('Cibercriminalidad')],
+  ],
 };
 const DS_LABEL={general:'Parque y conductores',siniestralidad:'Siniestralidad',
-  sanciones:'Sanciones y puntos',aforos:'Aforos MA-341 / MA-417'};
+  sanciones:'Sanciones y puntos',aforos:'Aforos MA-341 / MA-417',criminalidad:'Criminalidad'};
 let expState={ds:'general',grp:0,chart:null};
 
 function groupCols(ds,idx){
@@ -497,6 +520,27 @@ if(D.aforos){
     mkLine(`MA-341 total (${yy})`,mser('MA-341 · Total'),PAL[0],true),
     mkLine(`MA-417 total (${yy})`,mser('MA-417 · Total'),PAL[1],true),
   ]},options:baseOpts()});
+}
+
+/* =================== CRIMINALIDAD =================== */
+if(D.criminalidad){
+  const C=D.criminalidad, cy=C.anios.map(String);
+  const cv=col=>cy.map(y=>(C.series.Marbella[y]||{})[col]??null);
+  line('c_crim_total',{data:{labels:cy,datasets:[
+    mkLine('Total criminalidad',cv('TOTAL criminalidad'),PAL[5]),
+    mkLine('Convencional',cv('Criminalidad convencional (total)'),PAL[0]),
+    mkLine('Cibercriminalidad',cv('Cibercriminalidad (total)'),PAL[4]),
+  ]},options:baseOpts()});
+  const yl=String(Math.max(...C.anios));
+  const tipos=[['Hurtos','Hurtos'],['Robos violencia','Robos con violencia e intimidación'],
+    ['Robos fuerza domicilios','Robos con fuerza en domicilios, establecimientos y otras instalaciones'],
+    ['Sustracción vehículos','Sustracciones de vehículos'],['Tráfico drogas','Tráfico de drogas'],
+    ['Estafas informáticas','Estafas informáticas'],['Libertad sexual','Delitos contra la libertad sexual']];
+  const cvy=col=>(C.series.Marbella[yl]||{})[col]??0;
+  new Chart(document.getElementById('c_crim_tipos'),{type:'bar',
+    data:{labels:tipos.map(t=>t[0]),datasets:[{label:'Delitos '+yl,data:tipos.map(t=>cvy(t[1])),
+      backgroundColor:PAL[5],borderRadius:4,borderSkipped:false}]},
+    options:{...baseOpts(),indexAxis:'y',plugins:{legend:{display:false},tooltip:baseOpts().plugins.tooltip}}});
 }
 
 /* =================== INFORME PDF =================== */
@@ -574,6 +618,16 @@ function buildReport(){
       y la <b>MA-417</b> <b>${F(sa['MA-417 · Total'])} vehículos</b> (${F(sa['MA-417 · Pesados'])} pesados),
       con una marcada estacionalidad que dispara la circulación en los meses de verano.</p>`;
   }
+  let crimPar='';
+  if(D.criminalidad){
+    const C=D.criminalidad, yc=String(Math.max(...C.anios)), ycp=String(Math.max(...C.anios)-1);
+    const s=C.series.Marbella[yc]||{}, sp=C.series.Marbella[ycp]||{};
+    const tot=s['TOTAL criminalidad'], totp=sp['TOTAL criminalidad'];
+    crimPar=`<p class="lead">En materia de seguridad ciudadana (Ministerio del Interior), en ${yc} se registraron
+      <b>${F(tot)} infracciones penales</b> en Marbella${totp?arrow(tot,totp):''}. Destacan ${F(s['Hurtos'])} hurtos,
+      ${F(s['Robos con violencia e intimidación'])} robos con violencia, ${F(s['Sustracciones de vehículos'])} sustracciones de vehículos
+      y ${F(s['Cibercriminalidad (total)'])} ciberdelitos.</p>`;
+  }
   const kpi=(v,l)=>`<div class="rkpi"><b>${v}</b><span>${l}</span></div>`;
   const cmpRows=[
     ['Población',s=>colVal('general',s,yG,'Poblaci'),0],
@@ -606,6 +660,7 @@ function buildReport(){
     <p class="lead">En el ámbito sancionador, en ${yQ} se tramitaron <b>${F(sanc)} sanciones con detracción de puntos</b>
       en el municipio, con un total de ${F(puntos)} puntos detraídos.</p>
     ${aforoPar}
+    ${crimPar}
 
     <div class="rkpis block">
       ${kpi(F(pob),'Población '+yG)}

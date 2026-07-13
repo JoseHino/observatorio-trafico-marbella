@@ -16,6 +16,8 @@ por año con todos los municipios de España) y extrae Marbella + agregados de s
 | **General** | Población, censo de conductores, parque por tipo/antigüedad/combustible, distintivos ambientales | 2015–2025 |
 | **Siniestralidad** | Accidentes con víctimas, fallecidos y heridos por tipo de vehículo y peatones | 2015–2024 |
 | **Sanciones y puntos** | Sanciones con puntos y puntos detraídos por tipo de infracción | 2015–2023 |
+| **Aforos MA-341 / MA-417** | Intensidad de tráfico (ligeros/pesados/total) de dos estaciones de aforo — hoja de seguimiento propia | 2015–2024 (con huecos) |
+| **Criminalidad** | Infracciones penales por tipología (Ministerio del Interior — Balance trimestral de criminalidad) | 2023–2025 (ampliable a 2017) |
 
 Los años avanzan solos según la DGT va publicando (la siniestralidad y las sanciones
 salen con ~1 año de retraso).

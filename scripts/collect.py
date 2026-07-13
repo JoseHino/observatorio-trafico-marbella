@@ -182,6 +182,116 @@ def aggregate(header, body):
     return [header[i] for i in ncols], out
 
 
+# Balances trimestrales oficiales (4º trimestre = año completo). Cada balance
+# publica el año de referencia + el anterior ya consolidado. Se añaden años a
+# medida que el Ministerio los publica. El pipeline es tolerante a fallos: si un
+# PDF no se puede descargar, conserva lo ya guardado en data/criminalidad.json.
+CRIM_BALANCES = {
+    2022: "https://www.interior.gob.es/opencms/export/sites/default/.galleries/galeria-de-prensa/documentos-y-multimedia/balances-e-informes/2022/Balance-de-Criminalidad-Cuarto-Trimestre-2022.pdf",
+    2024: "https://www.interior.gob.es/opencms/export/sites/default/.galleries/galeria-de-prensa/documentos-y-multimedia/balances-e-informes/2024/BALANCE-CRIMINALIDAD-CUARTO-TRIMESTRE-2024.pdf",
+    2025: "https://www.interior.gob.es/opencms/export/sites/default/.galleries/galeria-de-prensa/documentos-y-multimedia/balances-e-informes/2025/Balance-de-Criminalidad_Cuarto_Trimestre_2025.pdf",
+}
+CRIM_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                  "(KHTML, like Gecko) Chrome/120 Safari/537.36",
+    "Accept": "application/pdf,*/*", "Accept-Language": "es-ES,es;q=0.9",
+    "Referer": "https://www.interior.gob.es/",
+}
+
+
+def _crim_clean(label):
+    if label.startswith("I.") and "CONVENCIONAL" in label:
+        return "Criminalidad convencional (total)"
+    if label.startswith("II") and "CIBERCRIMINALIDAD" in label:
+        return "Cibercriminalidad (total)"
+    if "TOTAL CRIMINALIDAD" in label:
+        return "TOTAL criminalidad"
+    return re.sub(r"^\s*\d+(\.\d+)?[.\-]+\s*", "", label).strip()
+
+
+def parse_balance_marbella(raw):
+    """Extrae la tabla 'Municipio de Marbella' de un balance de criminalidad
+    (PDF). Devuelve {anio: {tipologia: valor}} para los dos años del balance."""
+    import fitz
+    doc = fitz.open(stream=raw, filetype="pdf")
+    is_num = lambda s: bool(re.fullmatch(r"-?\d{1,3}(\.\d{3})*|-?\d+", s))
+    for i in range(doc.page_count):
+        t = doc[i].get_text()
+        if "Municipio de Marbella" not in t or "TIPOLOG" not in t:
+            continue
+        lines = [l.strip() for l in t.split("\n") if l.strip()]
+        hi = next(k for k, l in enumerate(lines) if l.startswith("TIPOLOG"))
+        yrs = [l for l in lines[hi + 1:hi + 6] if re.fullmatch(r"20\d\d", l)][:2]
+        if len(yrs) < 2:
+            continue
+        yp, yc = yrs
+        data = {yp: {}, yc: {}}
+        label, nums = None, []
+        for l in lines[hi + 3:]:
+            if l.startswith(("Columna", "Página", "INFRACCIONES")):
+                break
+            if re.fullmatch(r"-?\d+,\d+", l):
+                continue  # porcentaje
+            if is_num(l):
+                if label is not None:
+                    nums.append(l)
+            else:
+                label, nums = l, []
+            if label is not None and len(nums) == 2:
+                c = _crim_clean(label)
+                data[yp][c] = int(nums[0].replace(".", ""))
+                data[yc][c] = int(nums[1].replace(".", ""))
+                label = None
+        doc.close()
+        return data
+    doc.close()
+    return {}
+
+
+def collect_criminalidad():
+    """Criminalidad de Marbella (Ministerio del Interior). Parte del histórico
+    ya guardado y lo amplía/consolida con los balances oficiales disponibles.
+    Nunca pierde años previos aunque falle la descarga."""
+    path = DATA / "criminalidad.json"
+    base = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    series = base.get("series", {}).get("Marbella", {})
+    colorder = list(base.get("columnas", []))
+    try:
+        import fitz  # noqa: F401
+        for ref in sorted(CRIM_BALANCES):
+            url = CRIM_BALANCES[ref]
+            try:
+                raw = urlopen(Request(url, headers=CRIM_HEADERS), timeout=90).read()
+                d = parse_balance_marbella(raw)
+                for y in sorted(d):
+                    series.setdefault(y, {})
+                    for c, v in d[y].items():
+                        if c not in colorder:
+                            colorder.append(c)
+                        series[y][c] = v  # el balance más reciente consolida
+                print(f"[criminalidad] balance {ref}: OK ({', '.join(sorted(d))})")
+            except Exception as e:
+                print(f"[criminalidad] balance {ref}: no disponible ({getattr(e,'code',e)})")
+            time.sleep(6)  # petición educada (evita el límite de ráfaga del MIR)
+    except ImportError:
+        print("[criminalidad] PyMuPDF no instalado; se conserva lo guardado.")
+    if not series:
+        print("[criminalidad] sin datos.")
+        return None
+    anios = sorted(int(y) for y in series)
+    out = {
+        "columnas": colorder,
+        "anios": anios,
+        "series": {"Marbella": series},
+        "fuente": "Ministerio del Interior — Balance trimestral de criminalidad (SEC)",
+        "fuente_url": "https://estadisticasdecriminalidad.ses.mir.es/",
+        "nota": "Acumulado enero-diciembre. Cada año se consolida en el balance del año siguiente.",
+    }
+    path.write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")
+    print(f"[criminalidad] años: {anios} | tipologías: {len(colorder)}")
+    return out
+
+
 def collect_aforos():
     """Aforos de tráfico de las estaciones MA-341 y MA-417 (hoja de seguimiento
     propia, data/aforos.csv). Datos mensuales -> se agregan a totales anuales
@@ -264,6 +374,10 @@ def main():
     af = collect_aforos()
     if af:
         result["datasets"]["aforos"] = af
+
+    crim = collect_criminalidad()
+    if crim:
+        result["datasets"]["criminalidad"] = crim
 
     (DATA / "trafico_marbella.json").write_text(
         json.dumps(result, ensure_ascii=False, indent=1), encoding="utf-8")
