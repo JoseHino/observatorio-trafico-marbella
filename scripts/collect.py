@@ -258,6 +258,24 @@ def collect_criminalidad():
     colorder = list(base.get("columnas", []))
     try:
         import fitz  # noqa: F401
+        # 1) Balances guardados en local (data/balances/*.pdf). Vía fiable: el
+        #    Ministerio bloquea las descargas desde IPs de centros de datos, así
+        #    que basta con dejar aquí el PDF del balance del 4º trimestre.
+        bdir = DATA / "balances"
+        if bdir.exists():
+            for pdf in sorted(bdir.glob("*.pdf")):
+                try:
+                    d = parse_balance_marbella(pdf.read_bytes())
+                    for y in sorted(d):
+                        series.setdefault(y, {})
+                        for c, v in d[y].items():
+                            if c not in colorder:
+                                colorder.append(c)
+                            series[y][c] = v
+                    print(f"[criminalidad] local {pdf.name}: OK ({', '.join(sorted(d))})")
+                except Exception as e:
+                    print(f"[criminalidad] local {pdf.name}: error ({e})")
+        # 2) Intento online (funciona desde conexiones residenciales)
         for ref in sorted(CRIM_BALANCES):
             url = CRIM_BALANCES[ref]
             try:
