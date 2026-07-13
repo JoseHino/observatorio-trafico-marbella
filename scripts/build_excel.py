@@ -214,6 +214,9 @@ def sheet_portada(wb, data):
          rng(data["datasets"]["siniestralidad"]["anios"])),
         ("Sanciones y puntos", rng(data["datasets"]["sanciones"]["anios"])),
     ]
+    if "aforos" in data["datasets"]:
+        info.append(("Aforos de tráfico MA-341 / MA-417 (seguimiento propio)",
+                     rng(data["datasets"]["aforos"]["anios"])))
     r = 5
     for k, v in info:
         ws.cell(r, 2, k).font = Font(bold=True, color=AZUL) if k else Font()
@@ -234,6 +237,8 @@ def main():
     sheet_serie(wb, "General_Marbella", data["datasets"]["general"])
     sheet_serie(wb, "Siniestralidad_Marbella", data["datasets"]["siniestralidad"])
     sheet_serie(wb, "Sanciones_Marbella", data["datasets"]["sanciones"])
+    if "aforos" in data["datasets"]:
+        sheet_serie(wb, "Aforos_MA341_MA417", data["datasets"]["aforos"])
     last_general = max(data["datasets"]["general"]["anios"])
     sheet_comparativa(wb, data, last_general)
     sheet_indicadores(wb, data)

@@ -182,6 +182,47 @@ def aggregate(header, body):
     return [header[i] for i in ncols], out
 
 
+def collect_aforos():
+    """Aforos de tráfico de las estaciones MA-341 y MA-417 (hoja de seguimiento
+    propia, data/aforos.csv). Datos mensuales -> se agregan a totales anuales
+    para los años completos, y se conserva el detalle mensual (estacionalidad)."""
+    import csv as _csv
+    from collections import defaultdict, OrderedDict
+    path = DATA / "aforos.csv"
+    if not path.exists():
+        print("\n[aforos] data/aforos.csv no encontrado; se omite.")
+        return None
+    COLS = ["MA-341 · Ligeros", "MA-341 · Pesados", "MA-341 · Total",
+            "MA-417 · Ligeros", "MA-417 · Pesados", "MA-417 · Total"]
+    rows = list(_csv.reader(path.open(encoding="utf-8")))
+    body = rows[1:]
+    years = defaultdict(lambda: {c: [] for c in COLS})
+    periodos = []
+    mensual = OrderedDict((c, []) for c in COLS)
+    for r in body:
+        per = r[0]
+        periodos.append(per)
+        vals = [int(x) if x not in ("", "None") else None for x in r[1:7]]
+        for c, v in zip(COLS, vals):
+            mensual[c].append(v)
+            years[per[:4]][c].append(v)
+    series, anios = {}, []
+    for y in sorted(years):
+        cols = years[y]
+        if not all(len([v for v in cols[c] if v is not None]) == 12 for c in COLS):
+            continue  # solo años con los 12 meses
+        anios.append(int(y))
+        series[y] = {c: sum(v for v in cols[c] if v is not None) for c in COLS}
+    print(f"\n[aforos] años completos: {anios} ({len(periodos)} meses en total)")
+    return {
+        "columnas": COLS,
+        "anios": anios,
+        "series": {"Marbella": series},
+        "mensual": {"periodos": periodos, "valores": mensual},
+        "fuente": "Estaciones de aforo MA-341 y MA-417 (seguimiento propio)",
+    }
+
+
 def main():
     result = {
         "meta": {
@@ -219,6 +260,10 @@ def main():
             "anios": years_ok,
             "series": series,
         }
+
+    af = collect_aforos()
+    if af:
+        result["datasets"]["aforos"] = af
 
     (DATA / "trafico_marbella.json").write_text(
         json.dumps(result, ensure_ascii=False, indent=1), encoding="utf-8")

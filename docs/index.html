@@ -172,6 +172,28 @@
     </div>
   </section>
 
+  <section id="aforos-sec">
+    <h2>Intensidad de tráfico · estaciones de aforo MA-341 y MA-417</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Vehículos anuales por estación</h3>
+        <p class="cap">Total de vehículos/año (ligeros + pesados)</p>
+        <div class="chartbox"><canvas id="c_aforo_anual"></canvas></div>
+      </div>
+      <div class="card">
+        <h3>Vehículos pesados por estación</h3>
+        <p class="cap">Total de pesados/año</p>
+        <div class="chartbox"><canvas id="c_aforo_pesados"></canvas></div>
+      </div>
+      <div class="card full">
+        <h3>Perfil mensual — estacionalidad</h3>
+        <p class="cap">Intensidad total por mes (último año completo disponible). El tráfico se dispara en verano.</p>
+        <div class="chartbox"><canvas id="c_aforo_mensual"></canvas></div>
+      </div>
+    </div>
+    <p class="note">Fuente: estaciones de aforo MA-341 y MA-417 (seguimiento propio). Años sin datos (2019, 2020, 2022) omitidos.</p>
+  </section>
+
   <section id="explorador">
     <h2>Explorador de datos — todos los indicadores DGT</h2>
     <p class="cap" style="margin:0 0 14px;color:var(--ink2)">Marbella · elige el conjunto y el grupo de indicadores. Haz clic en la leyenda para mostrar/ocultar cada serie. La tabla inferior muestra el valor exacto de cada año.</p>
@@ -398,8 +420,16 @@ const GROUPS = {
     ['Semáforo', c=>c.includes('Semáforo')],
     ['Otras infracciones', c=>c.startsWith('Otra')],
   ],
+  aforos: [
+    ['Intensidad total por estación', c=>c.includes('Total')],
+    ['MA-341 por tipo de vehículo', c=>c.includes('MA-341')],
+    ['MA-417 por tipo de vehículo', c=>c.includes('MA-417')],
+    ['Vehículos ligeros', c=>c.includes('Ligeros')],
+    ['Vehículos pesados', c=>c.includes('Pesados')],
+  ],
 };
-const DS_LABEL={general:'Parque y conductores',siniestralidad:'Siniestralidad',sanciones:'Sanciones y puntos'};
+const DS_LABEL={general:'Parque y conductores',siniestralidad:'Siniestralidad',
+  sanciones:'Sanciones y puntos',aforos:'Aforos MA-341 / MA-417'};
 let expState={ds:'general',grp:0,chart:null};
 
 function groupCols(ds,idx){
@@ -435,7 +465,7 @@ function fillGroupSelect(){
 }
 // pestañas de dataset
 document.getElementById('ds_tabs').innerHTML =
-  Object.keys(GROUPS).map(k=>`<button data-ds="${k}"${k===expState.ds?' class="active"':''}>${DS_LABEL[k]}</button>`).join('');
+  Object.keys(GROUPS).filter(k=>D[k]).map(k=>`<button data-ds="${k}"${k===expState.ds?' class="active"':''}>${DS_LABEL[k]}</button>`).join('');
 document.querySelectorAll('#ds_tabs button').forEach(b=>b.addEventListener('click',()=>{
   document.querySelectorAll('#ds_tabs button').forEach(x=>x.classList.remove('active'));
   b.classList.add('active');
@@ -446,6 +476,28 @@ document.getElementById('grp_sel').addEventListener('change',e=>{
   expState.grp=+e.target.value; renderExplorer();
 });
 fillGroupSelect(); renderExplorer();
+
+/* =================== AFOROS (MA-341 / MA-417) =================== */
+if(D.aforos){
+  const A=D.aforos, ay=A.anios.map(String);
+  const av=col=>ay.map(y=>(A.series.Marbella[y]||{})[col]??null);
+  line('c_aforo_anual',{data:{labels:ay,datasets:[
+    mkLine('MA-341',av('MA-341 · Total'),PAL[0]),
+    mkLine('MA-417',av('MA-417 · Total'),PAL[1]),
+  ]},options:baseOpts()});
+  line('c_aforo_pesados',{data:{labels:ay,datasets:[
+    mkLine('MA-341 pesados',av('MA-341 · Pesados'),PAL[5]),
+    mkLine('MA-417 pesados',av('MA-417 · Pesados'),PAL[2]),
+  ]},options:baseOpts()});
+  const yy=String(Math.max(...A.anios)); // último año completo
+  const idx=A.mensual.periodos.map((p,i)=>[p,i]).filter(([p])=>p.startsWith(yy)).map(([,i])=>i);
+  const MES=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const mser=col=>idx.map(i=>A.mensual.valores[col][i]);
+  line('c_aforo_mensual',{data:{labels:idx.map((_,k)=>MES[k]||''),datasets:[
+    mkLine(`MA-341 total (${yy})`,mser('MA-341 · Total'),PAL[0],true),
+    mkLine(`MA-417 total (${yy})`,mser('MA-417 · Total'),PAL[1],true),
+  ]},options:baseOpts()});
+}
 
 /* =================== INFORME PDF =================== */
 const LP=['#2a78d6','#1baf7a','#eda100','#008300','#4a3aa7','#e34948'];
@@ -514,6 +566,14 @@ function buildReport(){
     mkR('España',tasaScope('España'),LP[5])],nf1);
 
   const F=nf.format, F1=nf1.format;
+  let aforoPar='';
+  if(D.aforos){
+    const A=D.aforos, ya=String(Math.max(...A.anios)), sa=A.series.Marbella[ya]||{};
+    aforoPar=`<p class="lead">En cuanto a la intensidad de tráfico en carretera (${ya}), la estación de aforo
+      <b>MA-341</b> registró <b>${F(sa['MA-341 · Total'])} vehículos</b> (de ellos ${F(sa['MA-341 · Pesados'])} pesados)
+      y la <b>MA-417</b> <b>${F(sa['MA-417 · Total'])} vehículos</b> (${F(sa['MA-417 · Pesados'])} pesados),
+      con una marcada estacionalidad que dispara la circulación en los meses de verano.</p>`;
+  }
   const kpi=(v,l)=>`<div class="rkpi"><b>${v}</b><span>${l}</span></div>`;
   const cmpRows=[
     ['Población',s=>colVal('general',s,yG,'Poblaci'),0],
@@ -545,6 +605,7 @@ function buildReport(){
       <b>${F1(tasaMar)} accidentes por cada 10.000 habitantes</b>${tasaEsp!=null?`, frente a ${F1(tasaEsp)} en el conjunto de España`:''}.</p>
     <p class="lead">En el ámbito sancionador, en ${yQ} se tramitaron <b>${F(sanc)} sanciones con detracción de puntos</b>
       en el municipio, con un total de ${F(puntos)} puntos detraídos.</p>
+    ${aforoPar}
 
     <div class="rkpis block">
       ${kpi(F(pob),'Población '+yG)}
