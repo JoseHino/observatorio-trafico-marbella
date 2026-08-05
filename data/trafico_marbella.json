@@ -1,6 +1,6 @@
 {
  "meta": {
-  "generado": "2026-07-13T09:29:58+00:00",
+  "generado": "2026-08-05T08:30:43+00:00",
   "municipio": "Marbella",
   "fuente": "DGT - DGT en cifras (Información municipal)",
   "fuente_url": "https://www.dgt.es/menusecundario/dgt-en-cifras/",
@@ -4810,7 +4810,8 @@
     2020,
     2021,
     2022,
-    2023
+    2023,
+    2024
    ],
    "series": {
     "Marbella": {
@@ -5020,6 +5021,29 @@
       "Otra (3 puntos)": 18.0,
       "Otra (4 puntos)": 48.0,
       "Otra (6 puntos)": 24.0
+     },
+     "2024": {
+      "Total Sanciones con Puntos": 2152.0,
+      "Total Puntos Detraídos": 6337.0,
+      "Velocidad (2 puntos)": 2558.0,
+      "Velocidad (3 puntos)": 0.0,
+      "Velocidad (4 puntos)": 908.0,
+      "Velocidad (6 puntos)": 342.0,
+      "Alcohol (4 puntos)": 212.0,
+      "Alcohol (6 puntos)": 210.0,
+      "Drogas (6 puntos)": 192.0,
+      "Casco, Cinturón, SRI (3 puntos)": 0.0,
+      "Casco, Cinturón, SRI (4 puntos)": 364.0,
+      "Casco, Cinturón, SRI (6 puntos)": 0.0,
+      "Móvil (3 puntos)": 291.0,
+      "Móvil (4 puntos)": 0.0,
+      "Móvil (6 puntos)": 402.0,
+      "Semáforo (3 puntos)": 0.0,
+      "Semáforo (4 puntos)": 416.0,
+      "Semáforo (6 puntos)": 0.0,
+      "Otra (3 puntos)": 102.0,
+      "Otra (4 puntos)": 232.0,
+      "Otra (6 puntos)": 108.0
      }
     },
     "Málaga capital": {
@@ -5229,6 +5253,29 @@
       "Otra (3 puntos)": 81.0,
       "Otra (4 puntos)": 60.0,
       "Otra (6 puntos)": 192.0
+     },
+     "2024": {
+      "Total Sanciones con Puntos": 1042.0,
+      "Total Puntos Detraídos": 3765.0,
+      "Velocidad (2 puntos)": 566.0,
+      "Velocidad (3 puntos)": 0.0,
+      "Velocidad (4 puntos)": 300.0,
+      "Velocidad (6 puntos)": 138.0,
+      "Alcohol (4 puntos)": 252.0,
+      "Alcohol (6 puntos)": 96.0,
+      "Drogas (6 puntos)": 0.0,
+      "Casco, Cinturón, SRI (3 puntos)": 0.0,
+      "Casco, Cinturón, SRI (4 puntos)": 772.0,
+      "Casco, Cinturón, SRI (6 puntos)": 0.0,
+      "Móvil (3 puntos)": 0.0,
+      "Móvil (4 puntos)": 0.0,
+      "Móvil (6 puntos)": 0.0,
+      "Semáforo (3 puntos)": 0.0,
+      "Semáforo (4 puntos)": 1276.0,
+      "Semáforo (6 puntos)": 0.0,
+      "Otra (3 puntos)": 3.0,
+      "Otra (4 puntos)": 104.0,
+      "Otra (6 puntos)": 258.0
      }
     },
     "Provincia Málaga": {
@@ -5438,6 +5485,29 @@
       "Otra (3 puntos)": 462.0,
       "Otra (4 puntos)": 728.0,
       "Otra (6 puntos)": 1104.0
+     },
+     "2024": {
+      "Total Sanciones con Puntos": 7481.0,
+      "Total Puntos Detraídos": 26947.0,
+      "Velocidad (2 puntos)": 5102.0,
+      "Velocidad (3 puntos)": 0.0,
+      "Velocidad (4 puntos)": 1976.0,
+      "Velocidad (6 puntos)": 732.0,
+      "Alcohol (4 puntos)": 2664.0,
+      "Alcohol (6 puntos)": 2160.0,
+      "Drogas (6 puntos)": 732.0,
+      "Casco, Cinturón, SRI (3 puntos)": 0.0,
+      "Casco, Cinturón, SRI (4 puntos)": 3508.0,
+      "Casco, Cinturón, SRI (6 puntos)": 0.0,
+      "Móvil (3 puntos)": 1071.0,
+      "Móvil (4 puntos)": 0.0,
+      "Móvil (6 puntos)": 2988.0,
+      "Semáforo (3 puntos)": 0.0,
+      "Semáforo (4 puntos)": 2464.0,
+      "Semáforo (6 puntos)": 0.0,
+      "Otra (3 puntos)": 546.0,
+      "Otra (4 puntos)": 1624.0,
+      "Otra (6 puntos)": 1380.0
      }
     },
     "Andalucía": {
@@ -5647,6 +5717,29 @@
       "Otra (3 puntos)": 4599.0,
       "Otra (4 puntos)": 14772.0,
       "Otra (6 puntos)": 32466.0
+     },
+     "2024": {
+      "Total Sanciones con Puntos": 73042.0,
+      "Total Puntos Detraídos": 295837.0,
+      "Velocidad (2 puntos)": 19516.0,
+      "Velocidad (3 puntos)": 0.0,
+      "Velocidad (4 puntos)": 12212.0,
+      "Velocidad (6 puntos)": 4386.0,
+      "Alcohol (4 puntos)": 17976.0,
+      "Alcohol (6 puntos)": 12954.0,
+      "Drogas (6 puntos)": 5622.0,
+      "Casco, Cinturón, SRI (3 puntos)": 15.0,
+      "Casco, Cinturón, SRI (4 puntos)": 31020.0,
+      "Casco, Cinturón, SRI (6 puntos)": 0.0,
+      "Móvil (3 puntos)": 6063.0,
+      "Móvil (4 puntos)": 0.0,
+      "Móvil (6 puntos)": 22356.0,
+      "Semáforo (3 puntos)": 0.0,
+      "Semáforo (4 puntos)": 107444.0,
+      "Semáforo (6 puntos)": 0.0,
+      "Otra (3 puntos)": 5349.0,
+      "Otra (4 puntos)": 15260.0,
+      "Otra (6 puntos)": 35664.0
      }
     },
     "España": {
@@ -5856,6 +5949,29 @@
       "Otra (3 puntos)": 48162.0,
       "Otra (4 puntos)": 103996.0,
       "Otra (6 puntos)": 171846.0
+     },
+     "2024": {
+      "Total Sanciones con Puntos": 481798.0,
+      "Total Puntos Detraídos": 1845951.0,
+      "Velocidad (2 puntos)": 214440.0,
+      "Velocidad (3 puntos)": 0.0,
+      "Velocidad (4 puntos)": 86728.0,
+      "Velocidad (6 puntos)": 29940.0,
+      "Alcohol (4 puntos)": 125640.0,
+      "Alcohol (6 puntos)": 89004.0,
+      "Drogas (6 puntos)": 58620.0,
+      "Casco, Cinturón, SRI (3 puntos)": 69.0,
+      "Casco, Cinturón, SRI (4 puntos)": 117320.0,
+      "Casco, Cinturón, SRI (6 puntos)": 0.0,
+      "Móvil (3 puntos)": 31068.0,
+      "Móvil (4 puntos)": 0.0,
+      "Móvil (6 puntos)": 108762.0,
+      "Semáforo (3 puntos)": 0.0,
+      "Semáforo (4 puntos)": 629800.0,
+      "Semáforo (6 puntos)": 0.0,
+      "Otra (3 puntos)": 50970.0,
+      "Otra (4 puntos)": 108212.0,
+      "Otra (6 puntos)": 195378.0
      }
     }
    }
