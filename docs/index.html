@@ -715,5 +715,44 @@ document.getElementById('btnpdf').addEventListener('click',()=>{
   }
 });
 </script>
+<style>.fuente-graf{font-size:11px;opacity:.75;margin:8px 2px 0;line-height:1.4}.fuente-graf a{color:inherit;text-decoration:underline}</style>
+<script>
+const CAJA_GRAFICA = ".card";
+const FUENTES_GRAFICAS = {
+  "c_pobveh": [["DGT en cifras · Información municipal", "https://www.dgt.es/menusecundario/dgt-en-cifras/dgt-en-cifras-resultados/dgt-en-cifras-detalle/?Informacion-municipal"]],
+  "c_motor": [["DGT en cifras · Información municipal", "https://www.dgt.es/menusecundario/dgt-en-cifras/dgt-en-cifras-resultados/dgt-en-cifras-detalle/?Informacion-municipal"]],
+  "c_comb": [["DGT en cifras · Información municipal", "https://www.dgt.es/menusecundario/dgt-en-cifras/dgt-en-cifras-resultados/dgt-en-cifras-detalle/?Informacion-municipal"]],
+  "c_amb": [["DGT en cifras · Información municipal", "https://www.dgt.es/menusecundario/dgt-en-cifras/dgt-en-cifras-resultados/dgt-en-cifras-detalle/?Informacion-municipal"]],
+  "c_acc": [["DGT en cifras · Información municipal", "https://www.dgt.es/menusecundario/dgt-en-cifras/dgt-en-cifras-resultados/dgt-en-cifras-detalle/?Informacion-municipal"]],
+  "c_vict": [["DGT en cifras · Información municipal", "https://www.dgt.es/menusecundario/dgt-en-cifras/dgt-en-cifras-resultados/dgt-en-cifras-detalle/?Informacion-municipal"]],
+  "c_tasa": [["DGT en cifras · Información municipal", "https://www.dgt.es/menusecundario/dgt-en-cifras/dgt-en-cifras-resultados/dgt-en-cifras-detalle/?Informacion-municipal"]],
+  "c_sanc": [["DGT en cifras · Información municipal", "https://www.dgt.es/menusecundario/dgt-en-cifras/dgt-en-cifras-resultados/dgt-en-cifras-detalle/?Informacion-municipal"]],
+  "c_sanctipo": [["DGT en cifras · Información municipal", "https://www.dgt.es/menusecundario/dgt-en-cifras/dgt-en-cifras-resultados/dgt-en-cifras-detalle/?Informacion-municipal"]],
+  "c_explora": [["DGT en cifras · Información municipal", "https://www.dgt.es/menusecundario/dgt-en-cifras/dgt-en-cifras-resultados/dgt-en-cifras-detalle/?Informacion-municipal"]],
+  "c_aforo_anual": [["Estaciones de aforo MA-341 y MA-417 (hoja de seguimiento propia)", null]],
+  "c_aforo_pesados": [["Estaciones de aforo MA-341 y MA-417 (hoja de seguimiento propia)", null]],
+  "c_aforo_mensual": [["Estaciones de aforo MA-341 y MA-417 (hoja de seguimiento propia)", null]],
+  "c_crim_total": [["Ministerio del Interior · Balance de Criminalidad (Portal Estadístico de Criminalidad)", "https://estadisticasdecriminalidad.ses.mir.es/"]],
+  "c_crim_tipos": [["Ministerio del Interior · Balance de Criminalidad (Portal Estadístico de Criminalidad)", "https://estadisticasdecriminalidad.ses.mir.es/"]]
+};
+// ─── FUENTE BAJO CADA GRÁFICA ───────────────────────────────────────────────
+// Añade «Fuente: …» con enlace debajo de las gráficas que no la llevan ya.
+(function () {
+  const pon = () => {
+    for (const [id, fuentes] of Object.entries(FUENTES_GRAFICAS)) {
+      const c = document.getElementById(id);
+      if (!c) continue;
+      const caja = c.closest(CAJA_GRAFICA) || c.parentElement;
+      if (!caja || caja.querySelector('.fuente-graf') || /Fuente/i.test(caja.textContent || '')) continue;
+      const p = document.createElement('p');
+      p.className = 'fuente-graf';
+      p.innerHTML = 'Fuente: ' + fuentes.map(([t, u]) => u ? `<a href="${u}" target="_blank" rel="noopener">${t}</a>` : t).join(' · ');
+      caja.appendChild(p);
+    }
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', pon); else pon();
+  setTimeout(pon, 4000);
+})();
+</script>
 </body>
 </html>
